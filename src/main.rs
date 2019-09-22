@@ -60,7 +60,6 @@ fn main() {
         if key == None && value == None {
             println!("must specify either key or value to search");
         } else {
-            // let f = std::fs::File::open(path: P)
             match std::fs::File::open(matches.value_of("target").unwrap()) {
                 Err(err) => {
                     println!("{}", err);
