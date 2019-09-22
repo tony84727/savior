@@ -1,10 +1,15 @@
 mod inspect;
+mod search;
+fn new_subcommand(name: &'_ str) -> clap::App<'_, '_> {
+    clap::SubCommand::with_name(name)
+    .author("tony84727 <tony84727@gmail.com>")
+}
 fn main() {
     let matches = clap::App::new("savior")
         .about("Let's save the corrupted minecraft world save together!")
         .author("tony84727 <tony84727@gmail.com>")
         .subcommand(
-            clap::SubCommand::with_name("inspect")
+            new_subcommand("inspect")
             .help("inspect region file")
             .arg(
                 clap::Arg::with_name("target")
@@ -13,8 +18,14 @@ fn main() {
                 .long("target to inspect, should be a region file(.mca)\ninspecting world directory/level.dat is WIP")
             )
         )
+        .subcommand(
+            new_subcommand("search")
+            .help("search keyword in the NBT tree")
+            .arg(clap::Arg::with_name("target").index(1).required(true))
+            .arg(clap::Arg::with_name("key").short("k"))
+            .arg(clap::Arg::with_name("value").short("v"))
+        )
         .get_matches();
-
     if let Some(matches) = matches.subcommand_matches("inspect") {
         match matches.value_of("target") {
             None => {
@@ -41,5 +52,48 @@ fn main() {
                 }
             }
         };
+    }
+
+    if let Some(matches) = matches.subcommand_matches("search") {
+        let key = matches.value_of("key");
+        let value = matches.value_of("value");
+        if key == None && value == None {
+            println!("must specify either key or value to search");
+        } else {
+            // let f = std::fs::File::open(path: P)
+            match std::fs::File::open(matches.value_of("target").unwrap()) {
+                Err(err) => {
+                    println!("{}", err);
+                },
+                Ok(file) => {
+                    match nbtrs::RegionFile::new(file) {
+                        Err(err) => {
+                            println!("fail to parse the region file, error: {}", err)
+                        },
+                        Ok(mut region) => {
+                            let searcher = search::Searcher{
+                                key,
+                                value,
+                            };
+                            match searcher.search(&mut region) {
+                                Err(err) => {
+                                    println!("{:?}", err);
+                                },
+                                Ok(results) => match results {
+                                    None => println!("no match found"),
+                                    Some(results) => {
+                                        println!("{} matches:", results.len());
+                                        for result in results {
+                                            println!("{}", result.path)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+        }
     }
 }
