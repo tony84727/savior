@@ -3,7 +3,8 @@ use std::{
     fmt,
     collections::{
         VecDeque,
-    }
+    },
+    time::Instant,
 };
 
 pub struct Searcher<'a> {
@@ -78,12 +79,15 @@ impl<'a> Searcher<'a> {
             return Err(SearcherError::IllegalArguments)
         }
         let mut matches = Vec::new();
+        let start = Instant::now();
+        let mut scan_counter = 0;
         for x in 0..=31 {
             for z in 0..=31 {
                 if file.chunk_exists(x,z) {
                     match file.load_chunk(x,z) {
                         Ok(tag) => {
                             bfs_visit_nbt(&tag, |path, tag| {
+                                scan_counter = scan_counter + 1;
                                 if let Some(value) = self.value {
                                     match tag {
                                         Tag::TagString(s) => {
@@ -103,6 +107,8 @@ impl<'a> Searcher<'a> {
                 }
             }
         }
+        let duration = Instant::now().duration_since(start);
+        println!("search {} entries, in: {} sec(s)", scan_counter, duration.as_secs());
         if matches.len() > 0 {
             Ok(Some(matches))
         } else {
