@@ -3,7 +3,6 @@ use std::{
     fmt,
     collections::{
         VecDeque,
-        HashMap,
     }
 };
 
@@ -41,18 +40,27 @@ pub struct SearchResult {
     pub path: Path,
 }
 
-fn bfs_visit_nbt<C>(compound : &HashMap<String, nbtrs::Tag>, mut callback: C) where C:FnMut(Path,&nbtrs::Tag) {
+fn bfs_visit_nbt<C>(start : &nbtrs::Tag, mut callback: C) where C:FnMut(Path,&nbtrs::Tag) {
     let mut worklist = VecDeque::new();
-    worklist.push_back((Path::new(), compound));
+    worklist.push_back((Path::new(), start));
     while !worklist.is_empty() {
-        let (path, compound) = worklist.pop_front().unwrap();
-        for (name, tag) in compound.iter() {
-            let path = path.concat(name.to_string());
-            callback(path.clone(), tag);
-            if let Tag::TagCompound(child_compound) = tag {
-                worklist.push_back((path, child_compound))
-            }
+        let (path,tag) = worklist.pop_front().unwrap();
+        match tag {
+            Tag::TagCompound(compound) => {
+                for (name, tag) in compound.iter() {
+                    let child_path = path.concat(name.to_string());
+                    worklist.push_back((child_path, tag));
+                }
+            },
+            Tag::TagList(list) => {
+                for (i,tag) in list.iter().enumerate() {
+                    let child_path = path.concat(i.to_string());
+                    worklist.push_back((child_path, tag));
+                }
+            },
+            _ =>(),
         }
+        callback(path, tag);
     }
 }
 
@@ -75,15 +83,11 @@ impl<'a> Searcher<'a> {
                 if file.chunk_exists(x,z) {
                     match file.load_chunk(x,z) {
                         Ok(tag) => {
-                            let tag = match tag {
-                                Tag::TagCompound(t) => t,
-                                _ => panic!("shoud be a compound"),
-                            };
                             bfs_visit_nbt(&tag, |path, tag| {
                                 if let Some(value) = self.value {
                                     match tag {
                                         Tag::TagString(s) => {
-                                            if s == value {
+                                            if s.contains(value) {
                                                 matches.push(SearchResult{
                                                     path: path,
                                                 })
@@ -99,6 +103,10 @@ impl<'a> Searcher<'a> {
                 }
             }
         }
-        Ok(None)
+        if matches.len() > 0 {
+            Ok(Some(matches))
+        } else {
+            Ok(None)
+        }
     }
 }
