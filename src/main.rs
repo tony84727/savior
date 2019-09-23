@@ -10,20 +10,21 @@ fn main() {
         .author("tony84727 <tony84727@gmail.com>")
         .subcommand(
             new_subcommand("inspect")
-            .help("inspect region file")
+            .about("Inspect region file")
             .arg(
                 clap::Arg::with_name("target")
                 .required(true)
                 .index(1)
-                .long("target to inspect, should be a region file(.mca)\ninspecting world directory/level.dat is WIP")
+                .long_help("Target to inspect, should be a region file(.mca)
+inspecting world directory/level.dat is WIP")
             )
         )
         .subcommand(
             new_subcommand("search")
-            .help("search keyword in the NBT tree")
-            .arg(clap::Arg::with_name("target").index(1).required(true))
-            .arg(clap::Arg::with_name("key").short("k"))
-            .arg(clap::Arg::with_name("value").short("v"))
+            .about("search keyword in the NBT tree")
+            .arg(clap::Arg::with_name("target").index(1).required(true).help("Region file to search"))
+            .arg(clap::Arg::with_name("key").short("k").takes_value(true).help("Keyword for nbt name"))
+            .arg(clap::Arg::with_name("value").short("v").takes_value(true).help("Keyword for nbt value"))
         )
         .get_matches();
     if let Some(matches) = matches.subcommand_matches("inspect") {
