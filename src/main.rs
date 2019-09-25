@@ -71,10 +71,7 @@ inspecting world directory/level.dat is WIP")
                             println!("fail to parse the region file, error: {}", err)
                         },
                         Ok(mut region) => {
-                            let searcher = search::Searcher{
-                                key,
-                                value,
-                            };
+                            let searcher = search::Searcher::new(key, value);
                             match searcher.search(&mut region) {
                                 Err(err) => {
                                     println!("{:?}", err);

@@ -7,9 +7,31 @@ use std::{
     time::Instant,
 };
 
-pub struct Searcher<'a> {
-    pub key: Option<&'a str>,
-    pub value: Option<&'a str>,
+struct Keyword {
+    string: String,
+    integer_8: Option<i8>,
+    integer_16: Option<i16>,
+    integer_32: Option<i32>,
+    float: Option<f32>,
+    double: Option<f64>,
+}
+
+impl Keyword {
+    fn new(keyword: &str) -> Keyword {
+        Keyword {
+            string: String::from(keyword),
+            integer_8: keyword.parse().ok(),
+            integer_16: keyword.parse().ok(),
+            integer_32: keyword.parse().ok(),
+            float: keyword.parse().ok(),
+            double: keyword.parse().ok(),
+        }
+    }
+}
+
+pub struct Searcher {
+    key: Option<Keyword>,
+    value: Option<Keyword>,
 }
 
 pub struct Path(Vec<String>);
@@ -37,8 +59,24 @@ impl Path {
     }
 }
 
+pub enum MatchedValue {
+    Byte(i8),
+    Short(i16),
+    Int(i32),
+    Long(i64),
+    Float(f32),
+    Double(f64),
+    String(String),
+}
+
+pub enum Matched {
+    Key(String),
+    Value(MatchedValue),
+}
+
 pub struct SearchResult {
     pub path: Path,
+    pub matched: Matched,
 }
 
 fn bfs_visit_nbt<C>(start : &nbtrs::Tag, mut callback: C) where C:FnMut(Path,&nbtrs::Tag) {
@@ -72,10 +110,16 @@ pub enum SearcherError {
     NBT(nbtrs::Error),
 }
 
-impl<'a> Searcher<'a> {
+impl Searcher {
+    pub fn new(key: Option<&str>, value: Option<&str>) -> Searcher {
+        Searcher{
+            key: key.map(Keyword::new),
+            value: value.map(Keyword::new),
+        }
+    }
     pub fn search<R>(&self, file: &mut nbtrs::RegionFile<R>)-> Result<Option<Vec<SearchResult>>, SearcherError>
     where R: std::io::Seek + std::io::Read  {
-        if self.key == None && self.value == None {
+        if self.key.is_none() && self.value.is_none() {
             return Err(SearcherError::IllegalArguments)
         }
         let mut matches = Vec::new();
@@ -88,12 +132,13 @@ impl<'a> Searcher<'a> {
                         Ok(tag) => {
                             bfs_visit_nbt(&tag, |path, tag| {
                                 scan_counter = scan_counter + 1;
-                                if let Some(value) = self.value {
+                                if let Some(value) = &self.value {
                                     match tag {
                                         Tag::TagString(s) => {
-                                            if s.contains(value) {
+                                            if s.contains(&value.string[..]) {
                                                 matches.push(SearchResult{
                                                     path: path,
+                                                    matched: Matched::Value(MatchedValue::String(s.to_string()))
                                                 })
                                             }
                                         },
