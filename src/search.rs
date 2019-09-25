@@ -153,7 +153,7 @@ impl Searcher {
             }
         }
         let duration = Instant::now().duration_since(start);
-        println!("search {} entries, in: {} sec(s)", scan_counter, duration.as_secs());
+        println!("search {} entries, in: {:?} {} entries/s", scan_counter, duration, f64::from(scan_counter) / duration.as_secs_f64());
         if matches.len() > 0 {
             Ok(Some(matches))
         } else {
